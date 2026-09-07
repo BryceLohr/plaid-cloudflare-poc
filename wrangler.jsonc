@@ -1,0 +1,35 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "plaid-cloudflare-poc",
+  "main": "./worker/index.ts",
+  "compatibility_date": "2026-09-05",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "vars": {
+    // Plaid environment host prefix: sandbox | production
+    "PLAID_ENV": "sandbox"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "plaid-cloudflare-poc",
+      "database_id": "fff409de-389f-4b56-9d30-34d3436d1a9e",
+      "migrations_dir": "./migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "STATEMENTS",
+      "bucket_name": "plaid-cloudflare-poc-statements"
+    }
+  ]
+  // Secrets (set with `wrangler secret put`, or in .dev.vars locally):
+  //   PLAID_CLIENT_ID, PLAID_SECRET
+}

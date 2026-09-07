@@ -1,0 +1,32 @@
+{
+  "name": "plaid-cloudflare-poc",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "npm run build && vite preview",
+    "deploy": "npm run build && wrangler deploy",
+    "check": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.worker.json --noEmit",
+    "cf-typegen": "wrangler types",
+    "db:migrate:local": "wrangler d1 migrations apply plaid-cloudflare-poc --local",
+    "db:migrate:remote": "wrangler d1 migrations apply plaid-cloudflare-poc --remote"
+  },
+  "dependencies": {
+    "hono": "^4.13.7",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-plaid-link": "^5.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.54.5",
+    "@types/node": "^26.5.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.2.2",
+    "wrangler": "^4.129.1"
+  }
+}
