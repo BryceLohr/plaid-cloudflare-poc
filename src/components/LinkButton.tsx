@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePlaidLink } from "react-plaid-link";
-import type { PlaidLinkOnSuccess } from "react-plaid-link";
+import type { PlaidLinkOnExit, PlaidLinkOnSuccess } from "react-plaid-link";
 import { api } from "../api";
 
 interface Props {
@@ -8,54 +8,63 @@ interface Props {
   onError: (message: string) => void;
 }
 
+interface SessionProps {
+  token: string;
+  onSuccess: PlaidLinkOnSuccess;
+  onExit: PlaidLinkOnExit;
+}
+
+/**
+ * One Plaid Link session. Mounted only while a link_token is active so every
+ * session gets a fresh usePlaidLink instance: the hook keeps reporting
+ * `ready` for a handler it has already destroyed once its token is cleared,
+ * which makes reusing a single instance across sessions unreliable.
+ */
+function LinkSession({ token, onSuccess, onExit }: SessionProps) {
+  const { open, ready } = usePlaidLink({ token, onSuccess, onExit });
+  const opened = useRef(false);
+
+  useEffect(() => {
+    if (ready && !opened.current) {
+      opened.current = true;
+      open();
+    }
+  }, [ready, open]);
+
+  return null;
+}
+
 export function LinkButton({ onLinked, onError }: Props) {
   const [token, setToken] = useState<string | null>(null);
   const [busy, setBusy] = useState<"token" | "exchange" | null>(null);
-  const [shouldOpen, setShouldOpen] = useState(false);
 
-  const onSuccess = useCallback<PlaidLinkOnSuccess>(
-    async (publicToken) => {
-      if (!publicToken) {
-        onError("Plaid Link did not return a public_token");
-        return;
-      }
-      setBusy("exchange");
-      try {
-        await api.exchangePublicToken(publicToken);
-        await onLinked();
-      } catch (err) {
-        onError(err instanceof Error ? err.message : String(err));
-      } finally {
-        setBusy(null);
-        setToken(null);
-      }
-    },
-    [onLinked, onError],
-  );
-
-  const { open, ready } = usePlaidLink({
-    token,
-    onSuccess,
-    onExit: (err) => {
-      setToken(null);
-      setShouldOpen(false);
-      if (err) onError(`${err.error_code}: ${err.display_message ?? err.error_message}`);
-    },
-  });
-
-  useEffect(() => {
-    if (shouldOpen && ready && token) {
-      setShouldOpen(false);
-      open();
+  const onSuccess: PlaidLinkOnSuccess = async (publicToken) => {
+    setToken(null);
+    if (!publicToken) {
+      onError("Plaid Link did not return a public_token");
+      return;
     }
-  }, [shouldOpen, ready, token, open]);
+    setBusy("exchange");
+    try {
+      await api.exchangePublicToken(publicToken);
+      await onLinked();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const onExit: PlaidLinkOnExit = (err) => {
+    setToken(null);
+    if (err) onError(`${err.error_code}: ${err.display_message ?? err.error_message}`);
+  };
 
   const start = async () => {
     setBusy("token");
     try {
       const { link_token } = await api.createLinkToken();
       setToken(link_token);
-      setShouldOpen(true);
     } catch (err) {
       onError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -67,8 +76,11 @@ export function LinkButton({ onLinked, onError }: Props) {
     busy === "token" ? "Preparing Link…" : busy === "exchange" ? "Linking and syncing…" : "Connect a bank account";
 
   return (
-    <button className="btn btn-primary" onClick={start} disabled={busy !== null || shouldOpen}>
-      {label}
-    </button>
+    <>
+      <button className="btn btn-primary" onClick={start} disabled={busy !== null || token !== null}>
+        {label}
+      </button>
+      {token && <LinkSession key={token} token={token} onSuccess={onSuccess} onExit={onExit} />}
+    </>
   );
 }
