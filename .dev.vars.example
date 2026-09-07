@@ -1,0 +1,4 @@
+# Copy to .dev.vars for local development (never commit real values).
+# These are provisioned as Cloudflare secrets in deployed environments.
+PLAID_CLIENT_ID=""
+PLAID_SECRET=""
