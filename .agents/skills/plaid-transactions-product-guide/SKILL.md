@@ -16,10 +16,7 @@ Follow this skill whenever implementing or debugging Plaid **Transactions** in *
 
 This guide provides a complete, step-by-step integration of Plaid's **Transactions** product using the **Sandbox** environment. It is intended to support both **frontend** and **backend** implementations in a language-agnostic format with optional language-specific hints. The goal is to enable an AI agent or developer to execute a fully functional Plaid integration, from user bank linking to retrieving transaction data.
 
-Assumptions:
-
-- The developer has a Plaid account and Sandbox `client_id` and `secret` are available. If not provided, please ask the users for it.
-- The application is able to make HTTP requests.
+Assume the Plaid account already exists. The `PLAID_CLIENT_ID` and `PLAID_SECRET` environment variables are available in the development environment, and point to the current Sandbox environment.
 
 This document references Plaid's official documentation using markdown links.
 
