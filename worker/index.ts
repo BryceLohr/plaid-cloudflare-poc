@@ -225,15 +225,18 @@ app.post("/items/:itemId/refresh/:product", async (c) => {
 app.get("/items/:itemId/transactions", async (c) => {
   const itemId = c.req.param("itemId");
   const limit = Math.min(Number(c.req.query("limit") ?? 500), 2000);
-  const rows = await c.env.DB.prepare(
-    `SELECT transaction_id, item_id, account_id, date, name, merchant_name, amount, iso_currency_code,
-            pending, category_primary, category_detailed
-     FROM transactions WHERE item_id = ? ORDER BY date DESC, transaction_id LIMIT ?`,
-  )
-    .bind(itemId, limit)
-    .all<Omit<Transaction, "pending"> & { pending: number }>();
-  const transactions: Transaction[] = rows.results.map((r) => ({ ...r, pending: r.pending === 1 }));
-  return c.json({ transactions });
+  const [rows, count] = await c.env.DB.batch([
+    c.env.DB.prepare(
+      `SELECT transaction_id, item_id, account_id, date, name, merchant_name, amount, iso_currency_code,
+              pending, category_primary, category_detailed
+       FROM transactions WHERE item_id = ? ORDER BY date DESC, transaction_id LIMIT ?`,
+    ).bind(itemId, limit),
+    c.env.DB.prepare("SELECT COUNT(*) AS n FROM transactions WHERE item_id = ?").bind(itemId),
+  ]);
+  const transactions: Transaction[] = (rows.results as (Omit<Transaction, "pending"> & { pending: number })[]).map(
+    (r) => ({ ...r, pending: r.pending === 1 }),
+  );
+  return c.json({ transactions, total: (count.results[0] as { n: number }).n });
 });
 
 app.get("/items/:itemId/liabilities", async (c) => {
@@ -280,7 +283,7 @@ function splitSecurity<T extends SecurityJoin>(row: T): [Omit<T, keyof SecurityJ
 
 app.get("/items/:itemId/investments", async (c) => {
   const itemId = c.req.param("itemId");
-  const [holdingsRes, txRes] = await c.env.DB.batch([
+  const [holdingsRes, txRes, txCount] = await c.env.DB.batch([
     c.env.DB.prepare(
       `SELECT h.account_id, h.security_id, h.item_id, h.quantity, h.institution_price, h.institution_value,
               h.cost_basis, h.iso_currency_code, ${SECURITY_COLUMNS}
@@ -293,6 +296,7 @@ app.get("/items/:itemId/investments", async (c) => {
        FROM investment_transactions t LEFT JOIN securities s ON s.security_id = t.security_id
        WHERE t.item_id = ? ORDER BY t.date DESC, t.investment_transaction_id LIMIT 1000`,
     ).bind(itemId),
+    c.env.DB.prepare("SELECT COUNT(*) AS n FROM investment_transactions WHERE item_id = ?").bind(itemId),
   ]);
 
   const holdings: Holding[] = (holdingsRes.results as (Omit<Holding, "security"> & SecurityJoin)[]).map((row) => {
@@ -305,7 +309,11 @@ app.get("/items/:itemId/investments", async (c) => {
     const [rest, security] = splitSecurity(row);
     return { ...rest, security };
   });
-  return c.json({ holdings, investment_transactions } satisfies InvestmentsResponse);
+  return c.json({
+    holdings,
+    investment_transactions,
+    investment_transactions_total: (txCount.results[0] as { n: number }).n,
+  } satisfies InvestmentsResponse);
 });
 
 app.get("/items/:itemId/statements", async (c) => {

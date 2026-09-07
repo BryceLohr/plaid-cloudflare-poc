@@ -208,6 +208,9 @@ h3 {
 .subsection + .subsection {
   margin-top: 8px;
 }
+.count-note {
+  margin: 0 0 8px;
+}
 
 table {
   width: 100%;

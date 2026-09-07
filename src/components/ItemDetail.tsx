@@ -6,7 +6,7 @@ import type {
   Liability,
   Product,
   Statement,
-  Transaction,
+  TransactionsResponse,
 } from "../../shared/types";
 import { api } from "../api";
 import { ProductPanel } from "./ProductPanel";
@@ -41,9 +41,13 @@ interface Props {
 export function ItemDetail({ item, busyProduct, dataVersion, onRefresh, onError }: Props) {
   const [tab, setTab] = useState<Tab>("accounts");
   const [loading, setLoading] = useState(false);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<TransactionsResponse>({ transactions: [], total: 0 });
   const [liabilities, setLiabilities] = useState<Liability[]>([]);
-  const [investments, setInvestments] = useState<InvestmentsResponse>({ holdings: [], investment_transactions: [] });
+  const [investments, setInvestments] = useState<InvestmentsResponse>({
+    holdings: [],
+    investment_transactions: [],
+    investment_transactions_total: 0,
+  });
   const [statements, setStatements] = useState<Statement[]>([]);
 
   const accountsById = useMemo(() => new Map<string, Account>(item.accounts.map((a) => [a.account_id, a])), [item.accounts]);
@@ -55,7 +59,7 @@ export function ItemDetail({ item, busyProduct, dataVersion, onRefresh, onError 
     const load = async () => {
       switch (tab) {
         case "transactions":
-          setTransactions((await api.transactions(item.item_id)).transactions);
+          setTransactions(await api.transactions(item.item_id));
           break;
         case "liabilities":
           setLiabilities((await api.liabilities(item.item_id)).liabilities);
@@ -117,7 +121,7 @@ export function ItemDetail({ item, busyProduct, dataVersion, onRefresh, onError 
           loading={loading}
           onRefresh={() => onRefresh("transactions")}
         >
-          <TransactionsTable transactions={transactions} accounts={accountsById} />
+          <TransactionsTable transactions={transactions.transactions} total={transactions.total} accounts={accountsById} />
         </ProductPanel>
       )}
 
@@ -144,7 +148,11 @@ export function ItemDetail({ item, busyProduct, dataVersion, onRefresh, onError 
           onRefresh={() => onRefresh("investments")}
         >
           <HoldingsTable holdings={investments.holdings} accounts={accountsById} />
-          <InvestmentTransactionsTable transactions={investments.investment_transactions} accounts={accountsById} />
+          <InvestmentTransactionsTable
+            transactions={investments.investment_transactions}
+            total={investments.investment_transactions_total}
+            accounts={accountsById}
+          />
         </ProductPanel>
       )}
 

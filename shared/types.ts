@@ -110,6 +110,12 @@ export interface Statement {
 export interface InvestmentsResponse {
   holdings: Holding[];
   investment_transactions: InvestmentTransaction[];
+  investment_transactions_total: number;
+}
+
+export interface TransactionsResponse {
+  transactions: Transaction[];
+  total: number;
 }
 
 export interface RefreshResult {

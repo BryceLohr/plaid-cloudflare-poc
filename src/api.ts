@@ -6,7 +6,7 @@ import type {
   Product,
   RefreshResult,
   Statement,
-  Transaction,
+  TransactionsResponse,
 } from "../shared/types";
 
 export class ApiRequestError extends Error {
@@ -44,7 +44,7 @@ export const api = {
     request<{ item: ItemSummary; results: RefreshResult[] }>(`/items/${itemId}/refresh/${product}`, {
       method: "POST",
     }),
-  transactions: (itemId: string) => request<{ transactions: Transaction[] }>(`/items/${itemId}/transactions`),
+  transactions: (itemId: string) => request<TransactionsResponse>(`/items/${itemId}/transactions`),
   liabilities: (itemId: string) => request<{ liabilities: Liability[] }>(`/items/${itemId}/liabilities`),
   investments: (itemId: string) => request<InvestmentsResponse>(`/items/${itemId}/investments`),
   statements: (itemId: string) => request<{ statements: Statement[] }>(`/items/${itemId}/statements`),

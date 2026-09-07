@@ -50,35 +50,54 @@ export function AccountsTable({ accounts }: { accounts: Account[] }) {
   );
 }
 
-export function TransactionsTable({ transactions, accounts }: { transactions: Transaction[]; accounts: AccountLookup }) {
+function CountNote({ shown, total }: { shown: number; total: number }) {
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Name</th>
-          <th>Merchant</th>
-          <th>Account</th>
-          <th>Category</th>
-          <th className="right">Amount</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {transactions.length === 0 && <EmptyRow colSpan={7}>No transactions persisted yet.</EmptyRow>}
-        {transactions.map((t) => (
-          <tr key={t.transaction_id}>
-            <td className="nowrap">{t.date}</td>
-            <td>{text(t.name)}</td>
-            <td className="muted">{text(t.merchant_name)}</td>
-            <td className="muted">{accountLabel(accounts, t.account_id)}</td>
-            <td className="muted">{titleCase(t.category_primary)}</td>
-            <td className={`right nowrap ${t.amount < 0 ? "credit" : ""}`}>{money(t.amount, t.iso_currency_code)}</td>
-            <td>{t.pending ? <span className="badge badge-pending">pending</span> : "posted"}</td>
+    <p className="muted small count-note">
+      {shown < total ? `Showing the ${shown} most recent of ${total} persisted rows.` : `${total} persisted rows.`}
+    </p>
+  );
+}
+
+export function TransactionsTable({
+  transactions,
+  total,
+  accounts,
+}: {
+  transactions: Transaction[];
+  total: number;
+  accounts: AccountLookup;
+}) {
+  return (
+    <>
+      <CountNote shown={transactions.length} total={total} />
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Name</th>
+            <th>Merchant</th>
+            <th>Account</th>
+            <th>Category</th>
+            <th className="right">Amount</th>
+            <th>Status</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {transactions.length === 0 && <EmptyRow colSpan={7}>No transactions persisted yet.</EmptyRow>}
+          {transactions.map((t) => (
+            <tr key={t.transaction_id}>
+              <td className="nowrap">{t.date}</td>
+              <td>{text(t.name)}</td>
+              <td className="muted">{text(t.merchant_name)}</td>
+              <td className="muted">{accountLabel(accounts, t.account_id)}</td>
+              <td className="muted">{titleCase(t.category_primary)}</td>
+              <td className={`right nowrap ${t.amount < 0 ? "credit" : ""}`}>{money(t.amount, t.iso_currency_code)}</td>
+              <td>{t.pending ? <span className="badge badge-pending">pending</span> : "posted"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
   );
 }
 
@@ -205,16 +224,19 @@ export function HoldingsTable({ holdings, accounts }: { holdings: Holding[]; acc
 
 export function InvestmentTransactionsTable({
   transactions,
+  total,
   accounts,
 }: {
   transactions: InvestmentTransaction[];
+  total: number;
   accounts: AccountLookup;
 }) {
   return (
     <div className="subsection">
       <h3>
-        Investment transactions <span className="muted small">({transactions.length})</span>
+        Investment transactions <span className="muted small">({total})</span>
       </h3>
+      <CountNote shown={transactions.length} total={total} />
       <table>
         <thead>
           <tr>
