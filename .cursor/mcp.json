@@ -5,9 +5,9 @@
       "args": [
         "mcp-server-plaid",
         "--client-id",
-        "PLAID_CLIENT_ID",
+        "${env:PLAID_CLIENT_ID}",
         "--secret",
-        "PLAID_SECRET"
+        "${env:PLAID_SECRET}"
       ]
     }
   }
