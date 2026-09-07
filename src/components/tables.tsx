@@ -261,11 +261,12 @@ export function StatementsTable({ statements, accounts }: { statements: Statemen
           <th>Period</th>
           <th>Account</th>
           <th>Statement ID</th>
+          <th>Stored in R2</th>
           <th>PDF</th>
         </tr>
       </thead>
       <tbody>
-        {statements.length === 0 && <EmptyRow colSpan={4}>No statements persisted yet.</EmptyRow>}
+        {statements.length === 0 && <EmptyRow colSpan={5}>No statements persisted yet.</EmptyRow>}
         {statements.map((s) => (
           <tr key={s.statement_id}>
             <td className="nowrap">
@@ -275,12 +276,15 @@ export function StatementsTable({ statements, accounts }: { statements: Statemen
             <td className="mono muted">{s.statement_id}</td>
             <td>
               {s.r2_key ? (
-                <a href={api.statementPdfUrl(s.statement_id)} target="_blank" rel="noreferrer">
-                  Download PDF
-                </a>
+                <span className="badge badge-ok">stored</span>
               ) : (
-                <span className="muted">not downloaded</span>
+                <span className="badge badge-pending">on demand</span>
               )}
+            </td>
+            <td>
+              <a href={api.statementPdfUrl(s.statement_id)} target="_blank" rel="noreferrer">
+                Open PDF
+              </a>
             </td>
           </tr>
         ))}

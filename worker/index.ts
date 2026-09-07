@@ -20,6 +20,7 @@ import { PlaidApiError, plaidClientFromEnv } from "./plaid";
 import { isProduct, refreshAll, refreshProduct } from "./sync";
 import type { SyncContext } from "./sync";
 import { daysAgo, isoDate } from "./sync/common";
+import { downloadStatementToR2 } from "./sync/statements";
 
 class NotFoundError extends Error {}
 
@@ -320,13 +321,20 @@ app.get("/items/:itemId/statements", async (c) => {
 app.get("/statements/:statementId/pdf", async (c) => {
   const statementId = c.req.param("statementId");
   const row = await c.env.DB.prepare(
-    "SELECT r2_key, year, month, account_id FROM statements WHERE statement_id = ?",
+    "SELECT item_id, r2_key, year, month, account_id FROM statements WHERE statement_id = ?",
   )
     .bind(statementId)
-    .first<{ r2_key: string | null; year: number; month: number; account_id: string }>();
-  if (!row?.r2_key) return c.json({ error: "Statement PDF not downloaded yet" } satisfies ApiError, 404);
+    .first<{ item_id: string; r2_key: string | null; year: number; month: number; account_id: string }>();
+  if (!row) return c.json({ error: "Statement not found" } satisfies ApiError, 404);
 
-  const object = await c.env.STATEMENTS.get(row.r2_key);
+  // Serve from R2, fetching from Plaid on first access if the refresh has not
+  // downloaded this statement yet.
+  let object = row.r2_key ? await c.env.STATEMENTS.get(row.r2_key) : null;
+  if (!object) {
+    const item = await requireItem(c.env.DB, row.item_id);
+    const key = await downloadStatementToR2(c.env.DB, c.env.STATEMENTS, plaidClientFromEnv(c.env), item, statementId);
+    object = await c.env.STATEMENTS.get(key);
+  }
   if (!object) return c.json({ error: "Statement PDF missing from storage" } satisfies ApiError, 404);
 
   const filename = `statement-${row.year}-${String(row.month).padStart(2, "0")}-${row.account_id.slice(0, 8)}.pdf`;

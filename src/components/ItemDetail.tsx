@@ -151,7 +151,7 @@ export function ItemDetail({ item, busyProduct, dataVersion, onRefresh, onError 
       {tab === "statements" && (
         <ProductPanel
           title="Statements"
-          description="Metadata from /statements/list; PDFs are fetched with /statements/download and stored in R2."
+          description="Metadata from /statements/list. PDFs are fetched with /statements/download and cached in R2: a batch of the newest on each refresh, the rest on first open."
           sync={syncFor("statements")}
           busy={isBusy("statements")}
           loading={loading}

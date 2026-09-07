@@ -15,6 +15,19 @@ export type SyncFn = (ctx: SyncContext) => Promise<Record<string, number>>;
 
 const RETRYABLE = new Set(["PRODUCT_NOT_READY", "RATE_LIMIT_EXCEEDED"]);
 
+/** Thrown by a sync when Plaid reports data is not ready yet; triggers a retry. */
+export class NotReadyError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NotReadyError";
+  }
+}
+
+function isRetryable(err: unknown): boolean {
+  if (err instanceof NotReadyError) return true;
+  return err instanceof PlaidApiError && RETRYABLE.has(err.body.error_code);
+}
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -27,7 +40,7 @@ export async function runProductSync(
   ctx: SyncContext,
   product: Product,
   fn: SyncFn,
-  maxAttempts = 3,
+  maxAttempts = 4,
 ): Promise<RefreshResult> {
   let lastError: unknown;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -37,19 +50,21 @@ export async function runProductSync(
       return { product, status: "ok", error: null, summary };
     } catch (err) {
       lastError = err;
-      if (err instanceof PlaidApiError && RETRYABLE.has(err.body.error_code) && attempt < maxAttempts) {
-        await sleep(1000 * 2 ** (attempt - 1));
+      if (isRetryable(err) && attempt < maxAttempts) {
+        await sleep(1500 * 2 ** (attempt - 1));
         continue;
       }
       break;
     }
   }
   const message = describeError(lastError);
+  // Data that is merely not ready yet is a pending state, not a failure.
+  const status = lastError instanceof NotReadyError ? "pending" : "error";
   console.error(
-    JSON.stringify({ level: "error", msg: "product sync failed", item_id: ctx.item.item_id, product, error: message }),
+    JSON.stringify({ level: status === "error" ? "error" : "warn", msg: "product sync incomplete", item_id: ctx.item.item_id, product, status, error: message }),
   );
-  await productSyncStatement(ctx.db, ctx.item.item_id, product, "error", message).run();
-  return { product, status: "error", error: message, summary: {} };
+  await productSyncStatement(ctx.db, ctx.item.item_id, product, status, message).run();
+  return { product, status, error: message, summary: {} };
 }
 
 export function describeError(err: unknown): string {

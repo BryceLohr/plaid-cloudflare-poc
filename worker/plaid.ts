@@ -72,6 +72,11 @@ export interface TransactionsSyncResponse {
   next_cursor: string;
   has_more: boolean;
   accounts?: PlaidAccount[];
+  transactions_update_status?:
+    | "TRANSACTIONS_UPDATE_STATUS_UNKNOWN"
+    | "NOT_READY"
+    | "INITIAL_UPDATE_COMPLETE"
+    | "HISTORICAL_UPDATE_COMPLETE";
   request_id: string;
 }
 

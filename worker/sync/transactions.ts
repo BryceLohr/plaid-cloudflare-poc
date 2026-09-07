@@ -1,6 +1,7 @@
 import { runBatch, upsertAccountStatements, nowIso } from "../db";
 import type { PlaidTransaction } from "../plaid";
 import type { SyncContext } from "./common";
+import { NotReadyError } from "./common";
 
 function upsertTransactionStatement(db: D1Database, itemId: string, t: PlaidTransaction) {
   return db
@@ -51,6 +52,11 @@ export async function syncTransactions(ctx: SyncContext): Promise<Record<string,
 
   while (hasMore) {
     const page = await plaid.transactionsSync(item.access_token, cursor);
+    // Right after linking, Plaid may answer with an empty page while the
+    // initial pull is still running; retry instead of persisting that cursor.
+    if (page.transactions_update_status === "NOT_READY") {
+      throw new NotReadyError("Plaid is still preparing transactions for this Item; refresh again shortly");
+    }
     pages++;
     const statements: D1PreparedStatement[] = [];
     if (page.accounts) statements.push(...upsertAccountStatements(db, item.item_id, page.accounts));
